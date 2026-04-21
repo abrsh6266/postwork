@@ -1,0 +1,188 @@
+{
+  "name": "Luna Thermal Yoga - Error Logger",
+  "nodes": [
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.errorTrigger",
+      "typeVersion": 1,
+      "position": [
+        -620,
+        240
+      ],
+      "id": "6ac67ddf-b36d-4665-a591-f0621ba68c6f",
+      "name": "Error Trigger - Global"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "48c8ca8b-a9ec-4f70-a902-93de3dbf1632",
+              "name": "Timestamp",
+              "value": "={{ new Date().toISOString() }}",
+              "type": "string"
+            },
+            {
+              "id": "aa1bcb4b-e1f8-40a4-aa15-00f87710b6ae",
+              "name": "Workflow Name",
+              "value": "={{ $json.workflow?.name || '' }}",
+              "type": "string"
+            },
+            {
+              "id": "3993db59-fd92-4b5f-8841-d5ce8993cd2a",
+              "name": "Node Name",
+              "value": "={{ $json.execution?.lastNodeExecuted || '' }}",
+              "type": "string"
+            },
+            {
+              "id": "2d393f49-8f30-4202-b09b-e41f273019c9",
+              "name": "Error Message",
+              "value": "={{ $json.execution?.error?.message || $json.error?.message || $json.execution?.data?.resultData?.error?.message || 'Unknown error' }}",
+              "type": "string"
+            },
+            {
+              "id": "1ddf14d8-2c7f-41e0-a269-8243f621c04a",
+              "name": "Execution Time",
+              "value": "={{ $json.execution?.startedAt || $json.execution?.stoppedAt || '' }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -360,
+        240
+      ],
+      "id": "df1d0e8c-4847-4bd3-a042-d06a654e1d17",
+      "name": "Set - Prepare Error Log"
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "YOUR_GOOGLE_SHEETS_DOCUMENT_ID"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "name",
+          "value": "Error Logs"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Timestamp": "={{ $json[\"Timestamp\"] }}",
+            "Workflow Name": "={{ $json[\"Workflow Name\"] }}",
+            "Node Name": "={{ $json[\"Node Name\"] }}",
+            "Error Message": "={{ $json[\"Error Message\"] }}",
+            "Execution Time": "={{ $json[\"Execution Time\"] }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "Timestamp",
+              "displayName": "Timestamp",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Workflow Name",
+              "displayName": "Workflow Name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Node Name",
+              "displayName": "Node Name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Error Message",
+              "displayName": "Error Message",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Execution Time",
+              "displayName": "Execution Time",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        -100,
+        240
+      ],
+      "id": "c397eb24-cdb6-41dc-accc-374d5a5c1475",
+      "name": "Google Sheets - Log Error",
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000
+    }
+  ],
+  "connections": {
+    "Error Trigger - Global": {
+      "main": [
+        [
+          {
+            "node": "Set - Prepare Error Log",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set - Prepare Error Log": {
+      "main": [
+        [
+          {
+            "node": "Google Sheets - Log Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "bd25cb54-32f1-4839-a089-f3f2f5314390",
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "id": "lunayogaErrorFlow001",
+  "tags": []
+}

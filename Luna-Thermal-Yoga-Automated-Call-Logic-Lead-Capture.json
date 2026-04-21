@@ -1,0 +1,1418 @@
+{
+  "name": "Luna Thermal Yoga - Automated Call Logic & Lead Capture",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "luna-thermal-yoga-incoming-call",
+        "responseMode": "onReceived",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -1040,
+        280
+      ],
+      "id": "45b34718-badb-4ca6-a360-a9419838ba66",
+      "name": "Webhook - Incoming Call",
+      "webhookId": "80f0db5a-e891-4459-b2d6-3ac096f9e294"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "language": "javaScript",
+        "jsCode": "const payload = $json.body ?? $json;\nconst rawCallerId = String(payload.caller_id ?? '').trim();\nconst rawTimestamp = String(payload.timestamp ?? '').trim();\nconst digitPressed = String(payload.digit_pressed ?? '').trim();\n\nconst digits = rawCallerId.replace(/\\D/g, '');\nlet formattedPhone = rawCallerId;\n\nif (digits.length === 11 && digits.startsWith('1')) {\n  formattedPhone = `+1-${digits.slice(1, 4)}-${digits.slice(4, 7)}-${digits.slice(7, 11)}`;\n} else if (digits.length === 10) {\n  formattedPhone = `+1-${digits.slice(0, 3)}-${digits.slice(3, 6)}-${digits.slice(6, 10)}`;\n} else if (digits) {\n  formattedPhone = `+${digits}`;\n}\n\nconst parsedDate = new Date(rawTimestamp);\nconst readableTime = Number.isNaN(parsedDate.getTime())\n  ? (rawTimestamp || new Date().toISOString())\n  : parsedDate.toLocaleString('en-US', {\n      timeZone: 'UTC',\n      year: 'numeric',\n      month: 'short',\n      day: '2-digit',\n      hour: '2-digit',\n      minute: '2-digit',\n      second: '2-digit',\n      hour12: true,\n      timeZoneName: 'short',\n    });\n\nconst intentMap = {\n  '1': 'Private Session',\n  '2': 'Membership Inquiry',\n};\n\nreturn [{\n  json: {\n    caller_id: rawCallerId,\n    formatted_phone: formattedPhone,\n    timestamp: rawTimestamp || new Date().toISOString(),\n    readable_time: readableTime,\n    digit_pressed: digitPressed,\n    call_intent: intentMap[digitPressed] || 'Unknown',\n  },\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -800,
+        280
+      ],
+      "id": "95e58efd-4fd2-4307-bd92-6db73a0f113b",
+      "name": "Code - Format Phone & Timestamp"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "9d8342be-a05d-4e4f-bc5f-9dc318d69f07",
+                    "leftValue": "={{$json.digit_pressed}}",
+                    "rightValue": "1",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "7d4658cf-5d31-4e49-a609-bdd5d161087b",
+                    "leftValue": "={{$json.digit_pressed}}",
+                    "rightValue": "2",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            }
+          ]
+        },
+        "options": {
+          "fallbackOutput": "extra"
+        }
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [
+        -560,
+        280
+      ],
+      "id": "c5da1f47-9a2d-497a-9194-cd6510b8b84d",
+      "name": "Switch - Route Call Type"
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "YOUR_GOOGLE_SHEETS_DOCUMENT_ID"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "name",
+          "value": "Urgent Lead Tracker"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Caller ID": "={{ $json[\"caller_id\"] }}",
+            "Phone": "={{ $json[\"formatted_phone\"] }}",
+            "Date/Time": "={{ $json[\"readable_time\"] }}",
+            "Call Intent": "={{ $json[\"call_intent\"] }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "Caller ID",
+              "displayName": "Caller ID",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Phone",
+              "displayName": "Phone",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Date/Time",
+              "displayName": "Date/Time",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Call Intent",
+              "displayName": "Call Intent",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        -300,
+        80
+      ],
+      "id": "af8c22e7-cad8-4986-a749-cbec2be51fec",
+      "name": "Google Sheets - Add Urgent Lead",
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000
+    },
+    {
+      "parameters": {
+        "authentication": "oAuth2",
+        "select": "channel",
+        "channelId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "YOUR_SLACK_CHANNEL_ID"
+        },
+        "text": "=\ud83d\udd25 NEW PRIVATE SESSION LEAD\n\nCaller: {{ $('Code - Format Phone & Timestamp').item.json.formatted_phone }}\nTime: {{ $('Code - Format Phone & Timestamp').item.json.readable_time }}",
+        "otherOptions": {
+          "includeLinkToWorkflow": false
+        }
+      },
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.4,
+      "position": [
+        -40,
+        80
+      ],
+      "id": "64d99188-58c3-4def-89d7-d7f98d71955b",
+      "name": "Notify - High Priority Lead",
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "75a56dd2-a9ae-4277-ab0e-b00ab3fc4aef",
+              "name": "caller_id",
+              "value": "={{ $('Code - Format Phone & Timestamp').item.json.caller_id }}",
+              "type": "string"
+            },
+            {
+              "id": "3ab5c420-6394-42d8-afab-d7e6c0a8622a",
+              "name": "formatted_phone",
+              "value": "={{ $('Code - Format Phone & Timestamp').item.json.formatted_phone }}",
+              "type": "string"
+            },
+            {
+              "id": "9dc3d05e-09a6-446c-8ec0-c298238edecb",
+              "name": "readable_time",
+              "value": "={{ $('Code - Format Phone & Timestamp').item.json.readable_time }}",
+              "type": "string"
+            },
+            {
+              "id": "353c2873-507e-4be6-bf43-0377df79a678",
+              "name": "call_intent",
+              "value": "={{ $('Code - Format Phone & Timestamp').item.json.call_intent }}",
+              "type": "string"
+            },
+            {
+              "id": "fb615ecd-377d-44ec-9e45-5ab04a1c0d4e",
+              "name": "priority",
+              "value": "HIGH",
+              "type": "string"
+            },
+            {
+              "id": "eaf3c745-4045-4bd8-8143-e45f33682629",
+              "name": "status",
+              "value": "logged",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        220,
+        80
+      ],
+      "id": "1a00e9ff-dbd6-4e1d-b526-fbe944f9b975",
+      "name": "Set - Confirm High Priority"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "b6c58d74-fa4d-4380-a8ca-080c54d50d8d",
+              "name": "caller_id",
+              "value": "={{ $json[\"caller_id\"] }}",
+              "type": "string"
+            },
+            {
+              "id": "6ca8dfcc-5931-4bbb-a111-8885b6bbea0f",
+              "name": "formatted_phone",
+              "value": "={{ $json[\"formatted_phone\"] }}",
+              "type": "string"
+            },
+            {
+              "id": "b580a142-b656-47d0-8559-413c79b52e6b",
+              "name": "readable_time",
+              "value": "={{ $json[\"readable_time\"] }}",
+              "type": "string"
+            },
+            {
+              "id": "17d03be2-1fe2-44b6-aeef-8f37f316f955",
+              "name": "digit_pressed",
+              "value": "={{ $json[\"digit_pressed\"] }}",
+              "type": "string"
+            },
+            {
+              "id": "ce8e78cc-b590-4cf6-81fa-b82f8a75ea32",
+              "name": "call_intent",
+              "value": "={{ $json[\"call_intent\"] }}",
+              "type": "string"
+            },
+            {
+              "id": "40d25c84-dc95-4b8e-b1aa-3d2515e0dd34",
+              "name": "retry_attempt",
+              "value": 1,
+              "type": "number"
+            },
+            {
+              "id": "84698580-fc17-4241-a8e5-568f0c03ce38",
+              "name": "status",
+              "value": "Pending Review",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -300,
+        300
+      ],
+      "id": "257bca90-7169-49d5-aee6-2dfd1eea56ca",
+      "name": "Set - Membership Attempt 1"
+    },
+    {
+      "parameters": {
+        "authentication": "airtableTokenApi",
+        "resource": "record",
+        "operation": "create",
+        "base": {
+          "__rl": true,
+          "mode": "id",
+          "value": "YOUR_AIRTABLE_BASE_ID"
+        },
+        "table": {
+          "__rl": true,
+          "mode": "id",
+          "value": "YOUR_AIRTABLE_TABLE_ID"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Caller ID": "={{ $json[\"caller_id\"] }}",
+            "Phone": "={{ $json[\"formatted_phone\"] }}",
+            "Date/Time": "={{ $json[\"readable_time\"] }}",
+            "Call Intent": "={{ $json[\"call_intent\"] }}",
+            "Status": "={{ $json[\"status\"] }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "Caller ID",
+              "displayName": "Caller ID",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Phone",
+              "displayName": "Phone",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Date/Time",
+              "displayName": "Date/Time",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Call Intent",
+              "displayName": "Call Intent",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Status",
+              "displayName": "Status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.2,
+      "position": [
+        -20,
+        300
+      ],
+      "id": "17774d52-4852-4145-b2f8-f3fae4c5bfdd",
+      "name": "Airtable - Create Membership Record Attempt 1",
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "26d72517-f7fa-4a3d-94de-c4d8d70ac31a",
+              "leftValue": "={{ $json.message || '' }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        220,
+        300
+      ],
+      "id": "56cc7fc4-ab88-49de-8364-55890bbcc2de",
+      "name": "IF - Attempt 1 Failed?"
+    },
+    {
+      "parameters": {
+        "resume": "timeInterval",
+        "amount": 5,
+        "unit": "seconds",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        500,
+        220
+      ],
+      "id": "8b0a1623-b2d0-4af7-bdd2-c8164d72aa91",
+      "name": "Wait - Retry Attempt 2",
+      "webhookId": "8dcf583d-e06f-46b8-af7d-093a72f88d86"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "8fa8dc91-5f06-4b86-a0f9-f0f761476975",
+              "name": "caller_id",
+              "value": "={{ $('Set - Membership Attempt 1').item.json.caller_id }}",
+              "type": "string"
+            },
+            {
+              "id": "1c9440d0-05af-4dc2-ae4d-f34fb7ca8dcf",
+              "name": "formatted_phone",
+              "value": "={{ $('Set - Membership Attempt 1').item.json.formatted_phone }}",
+              "type": "string"
+            },
+            {
+              "id": "1e4ed98f-e0f2-472f-8f90-69cd89a8f970",
+              "name": "readable_time",
+              "value": "={{ $('Set - Membership Attempt 1').item.json.readable_time }}",
+              "type": "string"
+            },
+            {
+              "id": "72dd5d94-c69c-4662-8f03-018391febe55",
+              "name": "digit_pressed",
+              "value": "={{ $('Set - Membership Attempt 1').item.json.digit_pressed }}",
+              "type": "string"
+            },
+            {
+              "id": "efcf5a04-efb8-4edf-b035-b67ea99be6ce",
+              "name": "call_intent",
+              "value": "={{ $('Set - Membership Attempt 1').item.json.call_intent }}",
+              "type": "string"
+            },
+            {
+              "id": "84ab2687-f524-4ec0-bf6d-a2cc20473970",
+              "name": "retry_attempt",
+              "value": 2,
+              "type": "number"
+            },
+            {
+              "id": "7b224b42-26ea-4807-9938-a70b56e91315",
+              "name": "status",
+              "value": "Pending Review",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        760,
+        220
+      ],
+      "id": "d30d4594-3de7-40ce-ad0f-e076f1e5fa54",
+      "name": "Set - Membership Attempt 2"
+    },
+    {
+      "parameters": {
+        "authentication": "airtableTokenApi",
+        "resource": "record",
+        "operation": "create",
+        "base": {
+          "__rl": true,
+          "mode": "id",
+          "value": "YOUR_AIRTABLE_BASE_ID"
+        },
+        "table": {
+          "__rl": true,
+          "mode": "id",
+          "value": "YOUR_AIRTABLE_TABLE_ID"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Caller ID": "={{ $json[\"caller_id\"] }}",
+            "Phone": "={{ $json[\"formatted_phone\"] }}",
+            "Date/Time": "={{ $json[\"readable_time\"] }}",
+            "Call Intent": "={{ $json[\"call_intent\"] }}",
+            "Status": "={{ $json[\"status\"] }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "Caller ID",
+              "displayName": "Caller ID",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Phone",
+              "displayName": "Phone",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Date/Time",
+              "displayName": "Date/Time",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Call Intent",
+              "displayName": "Call Intent",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Status",
+              "displayName": "Status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.2,
+      "position": [
+        1020,
+        220
+      ],
+      "id": "efc749f9-4adc-4b6f-b480-b3e1210d3ad3",
+      "name": "Airtable - Create Membership Record Attempt 2",
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "a1794515-aa61-4424-a3eb-94c865fae856",
+              "leftValue": "={{ $json.message || '' }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1260,
+        220
+      ],
+      "id": "5b5af792-32bc-4564-a86f-b8827cd03dd6",
+      "name": "IF - Attempt 2 Failed?"
+    },
+    {
+      "parameters": {
+        "resume": "timeInterval",
+        "amount": 5,
+        "unit": "seconds",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        1540,
+        140
+      ],
+      "id": "69826c7a-3176-4c05-a8a5-89d72b2f89e0",
+      "name": "Wait - Retry Attempt 3",
+      "webhookId": "a3071269-ab78-493d-ba32-f3e2ad9a0474"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "3df67756-e1b9-4087-ae04-4ded8c6458df",
+              "name": "caller_id",
+              "value": "={{ $('Set - Membership Attempt 1').item.json.caller_id }}",
+              "type": "string"
+            },
+            {
+              "id": "3a514167-cf7a-4618-a69d-8242e84f9bd4",
+              "name": "formatted_phone",
+              "value": "={{ $('Set - Membership Attempt 1').item.json.formatted_phone }}",
+              "type": "string"
+            },
+            {
+              "id": "d28e28bc-95fc-4c51-93c9-096dd9c81ae7",
+              "name": "readable_time",
+              "value": "={{ $('Set - Membership Attempt 1').item.json.readable_time }}",
+              "type": "string"
+            },
+            {
+              "id": "24cd017c-b07b-4b59-a7d1-f7a8ef2ae650",
+              "name": "digit_pressed",
+              "value": "={{ $('Set - Membership Attempt 1').item.json.digit_pressed }}",
+              "type": "string"
+            },
+            {
+              "id": "c98dc96f-4f77-4514-8de9-4c359677b1ef",
+              "name": "call_intent",
+              "value": "={{ $('Set - Membership Attempt 1').item.json.call_intent }}",
+              "type": "string"
+            },
+            {
+              "id": "d16e5eb6-a1cb-49f2-8ea1-d98354342206",
+              "name": "retry_attempt",
+              "value": 3,
+              "type": "number"
+            },
+            {
+              "id": "973359de-447f-427a-bcda-cf1ef2ec1b79",
+              "name": "status",
+              "value": "Pending Review",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1800,
+        140
+      ],
+      "id": "3de8f440-e8fd-42db-bec6-68bd02d56f79",
+      "name": "Set - Membership Attempt 3"
+    },
+    {
+      "parameters": {
+        "authentication": "airtableTokenApi",
+        "resource": "record",
+        "operation": "create",
+        "base": {
+          "__rl": true,
+          "mode": "id",
+          "value": "YOUR_AIRTABLE_BASE_ID"
+        },
+        "table": {
+          "__rl": true,
+          "mode": "id",
+          "value": "YOUR_AIRTABLE_TABLE_ID"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Caller ID": "={{ $json[\"caller_id\"] }}",
+            "Phone": "={{ $json[\"formatted_phone\"] }}",
+            "Date/Time": "={{ $json[\"readable_time\"] }}",
+            "Call Intent": "={{ $json[\"call_intent\"] }}",
+            "Status": "={{ $json[\"status\"] }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "Caller ID",
+              "displayName": "Caller ID",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Phone",
+              "displayName": "Phone",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Date/Time",
+              "displayName": "Date/Time",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Call Intent",
+              "displayName": "Call Intent",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Status",
+              "displayName": "Status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.2,
+      "position": [
+        2060,
+        140
+      ],
+      "id": "6e1237cb-fa40-46b5-8d85-19e5d0638d2e",
+      "name": "Airtable - Create Membership Record Attempt 3",
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "36ebf343-d245-48a0-8496-698595503f65",
+              "leftValue": "={{ $json.message || '' }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        2300,
+        140
+      ],
+      "id": "75902fbd-a66e-4cc6-becd-869278fc556d",
+      "name": "IF - Attempt 3 Failed?"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "c1bcb9d2-0c36-4f34-b7ef-5bf2948a1be7",
+              "name": "Caller ID",
+              "value": "={{ $('Set - Membership Attempt 1').item.json.caller_id }}",
+              "type": "string"
+            },
+            {
+              "id": "b372d916-903e-4d18-9c31-a885cc138bf6",
+              "name": "Phone",
+              "value": "={{ $('Set - Membership Attempt 1').item.json.formatted_phone }}",
+              "type": "string"
+            },
+            {
+              "id": "f8c58984-1719-4ae4-ac7f-bb7ce76dbdd0",
+              "name": "Date/Time",
+              "value": "={{ $('Set - Membership Attempt 1').item.json.readable_time }}",
+              "type": "string"
+            },
+            {
+              "id": "cd668af3-a080-44ca-ad40-b7d8d946ea1d",
+              "name": "Digit Pressed",
+              "value": "={{ $('Set - Membership Attempt 1').item.json.digit_pressed }}",
+              "type": "string"
+            },
+            {
+              "id": "76f03f6c-9e60-4f5e-80d4-f51eb82873f3",
+              "name": "Call Intent",
+              "value": "={{ $('Set - Membership Attempt 1').item.json.call_intent }}",
+              "type": "string"
+            },
+            {
+              "id": "383c5563-7faa-45f1-bdba-c59d16a42b74",
+              "name": "Failure Reason",
+              "value": "={{ $json.message || 'Airtable create failed after 3 attempts' }}",
+              "type": "string"
+            },
+            {
+              "id": "1e0c772f-9cdc-40d2-8baa-96ee029c5cc4",
+              "name": "Retry Count",
+              "value": "3",
+              "type": "string"
+            },
+            {
+              "id": "c091ec8b-8b25-42cf-bfe0-cfa0582b22aa",
+              "name": "Logged At",
+              "value": "={{ new Date().toISOString() }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        2560,
+        100
+      ],
+      "id": "1af5ef49-e630-4331-8bd8-1dbf3eb9d583",
+      "name": "Set - Failed Lead Payload"
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "YOUR_GOOGLE_SHEETS_DOCUMENT_ID"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "name",
+          "value": "Failed Leads"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Caller ID": "={{ $json[\"Caller ID\"] }}",
+            "Phone": "={{ $json[\"Phone\"] }}",
+            "Date/Time": "={{ $json[\"Date/Time\"] }}",
+            "Digit Pressed": "={{ $json[\"Digit Pressed\"] }}",
+            "Call Intent": "={{ $json[\"Call Intent\"] }}",
+            "Failure Reason": "={{ $json[\"Failure Reason\"] }}",
+            "Retry Count": "={{ $json[\"Retry Count\"] }}",
+            "Logged At": "={{ $json[\"Logged At\"] }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "Caller ID",
+              "displayName": "Caller ID",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Phone",
+              "displayName": "Phone",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Date/Time",
+              "displayName": "Date/Time",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Digit Pressed",
+              "displayName": "Digit Pressed",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Call Intent",
+              "displayName": "Call Intent",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Failure Reason",
+              "displayName": "Failure Reason",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Retry Count",
+              "displayName": "Retry Count",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Logged At",
+              "displayName": "Logged At",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        2820,
+        100
+      ],
+      "id": "953a936b-3806-4d61-9b0c-aeecf6d86f71",
+      "name": "Google Sheets - Log Failed Lead",
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "69882b0f-fd7b-4794-a2ae-f18d084e4b4c",
+              "name": "caller_id",
+              "value": "={{ $('Set - Membership Attempt 1').item.json.caller_id }}",
+              "type": "string"
+            },
+            {
+              "id": "64f1d623-8e5f-4b4b-8472-7f20553234d4",
+              "name": "formatted_phone",
+              "value": "={{ $('Set - Membership Attempt 1').item.json.formatted_phone }}",
+              "type": "string"
+            },
+            {
+              "id": "69432a90-1e92-4042-9f9c-d013cc89e35e",
+              "name": "readable_time",
+              "value": "={{ $('Set - Membership Attempt 1').item.json.readable_time }}",
+              "type": "string"
+            },
+            {
+              "id": "0671eb6c-c49a-48c0-a114-1d6ef566bf95",
+              "name": "call_intent",
+              "value": "={{ $('Set - Membership Attempt 1').item.json.call_intent }}",
+              "type": "string"
+            },
+            {
+              "id": "4d45208a-5d3d-486d-bf3f-094f0c6fbd90",
+              "name": "priority",
+              "value": "STANDARD",
+              "type": "string"
+            },
+            {
+              "id": "5a4da8ae-5d48-4355-bdca-bcb2d397bd8b",
+              "name": "status",
+              "value": "logged",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        520,
+        420
+      ],
+      "id": "6452a794-90ec-4ab4-bb5d-1e5f49031215",
+      "name": "Set - Membership Logged"
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "YOUR_GOOGLE_SHEETS_DOCUMENT_ID"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "name",
+          "value": "Unknown Calls"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Caller ID": "={{ $json[\"caller_id\"] }}",
+            "Phone": "={{ $json[\"formatted_phone\"] }}",
+            "Date/Time": "={{ $json[\"readable_time\"] }}",
+            "Digit Pressed": "={{ $json[\"digit_pressed\"] }}",
+            "Call Intent": "={{ $json[\"call_intent\"] }}",
+            "Status": "Unknown Input"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "Caller ID",
+              "displayName": "Caller ID",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Phone",
+              "displayName": "Phone",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Date/Time",
+              "displayName": "Date/Time",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Digit Pressed",
+              "displayName": "Digit Pressed",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Call Intent",
+              "displayName": "Call Intent",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Status",
+              "displayName": "Status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        -300,
+        540
+      ],
+      "id": "cd9a3cff-4ed0-454d-b892-e1020ea3d8c7",
+      "name": "Google Sheets - Log Unknown Call",
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000
+    }
+  ],
+  "connections": {
+    "Webhook - Incoming Call": {
+      "main": [
+        [
+          {
+            "node": "Code - Format Phone & Timestamp",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code - Format Phone & Timestamp": {
+      "main": [
+        [
+          {
+            "node": "Switch - Route Call Type",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Switch - Route Call Type": {
+      "main": [
+        [
+          {
+            "node": "Google Sheets - Add Urgent Lead",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Set - Membership Attempt 1",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Google Sheets - Log Unknown Call",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Sheets - Add Urgent Lead": {
+      "main": [
+        [
+          {
+            "node": "Notify - High Priority Lead",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Notify - High Priority Lead": {
+      "main": [
+        [
+          {
+            "node": "Set - Confirm High Priority",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set - Membership Attempt 1": {
+      "main": [
+        [
+          {
+            "node": "Airtable - Create Membership Record Attempt 1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Airtable - Create Membership Record Attempt 1": {
+      "main": [
+        [
+          {
+            "node": "IF - Attempt 1 Failed?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF - Attempt 1 Failed?": {
+      "main": [
+        [
+          {
+            "node": "Wait - Retry Attempt 2",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Set - Membership Logged",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait - Retry Attempt 2": {
+      "main": [
+        [
+          {
+            "node": "Set - Membership Attempt 2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set - Membership Attempt 2": {
+      "main": [
+        [
+          {
+            "node": "Airtable - Create Membership Record Attempt 2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Airtable - Create Membership Record Attempt 2": {
+      "main": [
+        [
+          {
+            "node": "IF - Attempt 2 Failed?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF - Attempt 2 Failed?": {
+      "main": [
+        [
+          {
+            "node": "Wait - Retry Attempt 3",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Set - Membership Logged",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait - Retry Attempt 3": {
+      "main": [
+        [
+          {
+            "node": "Set - Membership Attempt 3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set - Membership Attempt 3": {
+      "main": [
+        [
+          {
+            "node": "Airtable - Create Membership Record Attempt 3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Airtable - Create Membership Record Attempt 3": {
+      "main": [
+        [
+          {
+            "node": "IF - Attempt 3 Failed?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF - Attempt 3 Failed?": {
+      "main": [
+        [
+          {
+            "node": "Set - Failed Lead Payload",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Set - Membership Logged",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set - Failed Lead Payload": {
+      "main": [
+        [
+          {
+            "node": "Google Sheets - Log Failed Lead",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "5b8cac87-b51b-492f-813a-2e1f0f0ed9d8",
+  "meta": {
+    "templateCredsSetupCompleted": true
+  },
+  "id": "lunayogaCallFlow001",
+  "tags": []
+}
